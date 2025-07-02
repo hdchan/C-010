@@ -1,0 +1,12 @@
+{
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**.pytest_cache": true,
+    },
+    "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.completeFunctionParens": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportUnusedFunction": "warning"
+    },
+    "python.experiments.optInto": ["pythonTestAdapter"]
+}
