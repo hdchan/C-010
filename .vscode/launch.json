@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Run Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./app.py",
+            "console": "integratedTerminal"
         }
     ]
 }
