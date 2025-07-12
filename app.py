@@ -53,11 +53,9 @@ app.layout = html.Div([
         """,
         style={'width': '100%', 'height': 300},
     ),
-    # html.Div(id='output-data-upload'),
-    html.Div(id="meta_win_rate")
+    html.Div(id="meta_win_rate"),
+    html.Div(id='output-data-upload')
 ])
-
-
 
 def get_data_frame(contents, filename, date, meta_grouping = None):
     content_type, content_string = contents.split(',')
@@ -93,12 +91,6 @@ def get_data_frame(contents, filename, date, meta_grouping = None):
     selected_columns['meta_group'].fillna('other', inplace=True)
     return selected_columns
 
-@callback(
-    Output('textarea-example-output', 'children'),
-    Input('textarea-example', 'value')
-)
-def update_output(value):
-    return 'You have entered: \n{}'.format(value)
 
 def parse_contents(contents, filename, date):
     
@@ -128,45 +120,54 @@ def parse_contents(contents, filename, date):
         })
     ])
 
-@callback(Output('output-data-upload', 'children'),
-              Input('upload-data', 'contents'),
-              Input('textarea-example', 'value'),
-              State('upload-data', 'filename'),
-              State('upload-data', 'last_modified'))
-def update_output(contents, meta_grouping_string, filename, date):
-    if contents is not None:
-        try:
-            meta_grouping = json.loads(meta_grouping_string)
-        except ValueError as e:
-            meta_grouping = None
-            
-        df = get_data_frame(contents, filename, date, meta_grouping)
+def meta_win_rate_output(df, meta_grouping):
+    grouped_data = df.groupby('meta_group')
+    category_count = grouped_data['meta_group'].count()
+    
+    try:
+        for i in meta_grouping.keys():
+            if category_count.index.isin([i]).any() == False:
+                category_count = pd.concat([category_count, pd.Series([0], index=[i], name=category_count.name)])
+    except:
+        # nothing
+        pass
+        
+    category_count = category_count.sort_values()
+    
+    fig = px.bar(category_count, x='meta_group', y=category_count.index)
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+    return html.Div([
+        dcc.Graph(figure=fig, config={'displayModeBar': False})
+    ])
 
-        if df is None:
-            return html.Div([
-                'There was an error processing this file.'
-            ])
-            
+def table_output(df, contents, filename, date):
+    if df is None:
         return html.Div([
-            html.H5(filename),
-            html.H6(datetime.datetime.fromtimestamp(date)),
-
-            dash_table.DataTable(
-                df.to_dict('records'),
-                [{'name': i, 'id': i} for i in df.columns]
-            ),
-
-            html.Hr(),  # horizontal line
-
-            # For debugging, display the raw contents provided by the web browser
-            html.Div('Raw Content'),
-            html.Pre(contents[0:200] + '...', style={
-                'whiteSpace': 'pre-wrap',
-                'wordBreak': 'break-all'
-            })
+            'There was an error processing this file.'
         ])
+        
+    return html.Div([
+        html.H5(filename),
+        html.H6(datetime.datetime.fromtimestamp(date)),
+
+        dash_table.DataTable(
+            df.to_dict('records'),
+            [{'name': i, 'id': i} for i in df.columns]
+        ),
+
+        html.Hr(),  # horizontal line
+
+        # For debugging, display the raw contents provided by the web browser
+        html.Div('Raw Content'),
+        html.Pre(contents[0:200] + '...', style={
+            'whiteSpace': 'pre-wrap',
+            'wordBreak': 'break-all'
+        })
+    ])
 
 @callback(Output('meta_win_rate', 'children'),
+          Output('output-data-upload', 'children'),
               Input('upload-data', 'contents'),
               Input('textarea-example', 'value'),
               State('upload-data', 'filename'),
@@ -179,24 +180,9 @@ def update_output(contents, meta_grouping_string, filename, date):
             meta_grouping = None
             
         df = get_data_frame(contents, filename, date, meta_grouping)
-        grouped_data = df.groupby('meta_group')
-        category_count = grouped_data['meta_group'].count()
         
-        try:
-            for i in meta_grouping.keys():
-                if category_count.index.isin([i]).any() == False:
-                    category_count = pd.concat([category_count, pd.Series([0], index=[i], name=category_count.name)])
-        except:
-            # nothing
-            pass
-            
-        category_count = category_count.sort_values()
+        return meta_win_rate_output(df, meta_grouping), table_output(df, contents, filename, date)
+    return None, None
         
-        fig = px.bar(category_count, x='meta_group', y=category_count.index)
-        fig.layout.xaxis.fixedrange = True
-        fig.layout.yaxis.fixedrange = True
-        return html.Div([
-            dcc.Graph(figure=fig, config={'displayModeBar': False})
-        ])
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
