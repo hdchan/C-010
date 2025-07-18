@@ -53,7 +53,14 @@ app.layout = html.Div([
         """,
         style={'width': '100%', 'height': 300},
     ),
-    html.Div(id="meta_win_rate"),
+    html.Div(children=html.Div([
+        "Meta player count",
+        html.Div(id="meta_player_count")
+        ])),
+    html.Div(children=html.Div([
+        "Meta win rate",
+        html.Div(id="meta_win_rate")
+        ])),
     html.Div(id='output-data-upload')
 ])
 
@@ -73,8 +80,6 @@ def get_data_frame(contents, filename, date, meta_grouping = None):
     except Exception as e:
         print(e)
         return None
-    
-    
     
     selected_columns = df[['TeamPlayers1DisplayName', 'Points', 'GameCount', 'GameDraws', 'GameLosses', 'GameWins', 'MatchCount', 'MatchDraws', 'MatchLosses', 'MatchWins', 'Decklists1DecklistName']]
     selected_columns['Decklists1DecklistName'].fillna('Empty - Empty', inplace=True)
@@ -120,7 +125,7 @@ def parse_contents(contents, filename, date):
         })
     ])
 
-def meta_win_rate_output(df, meta_grouping):
+def meta_player_count_output(df, meta_grouping):
     grouped_data = df.groupby('meta_group')
     category_count = grouped_data['meta_group'].count()
     
@@ -135,6 +140,29 @@ def meta_win_rate_output(df, meta_grouping):
     category_count = category_count.sort_values()
     
     fig = px.bar(category_count, x='meta_group', y=category_count.index)
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+    return html.Div([
+        dcc.Graph(figure=fig, config={'displayModeBar': False})
+    ])
+
+def meta_win_rate_output(df, meta_grouping):
+    grouped_data = df.groupby('meta_group')
+    match_wins = grouped_data['MatchWins'].sum()
+    match_count = grouped_data['MatchCount'].sum()
+    win_rate = match_wins / match_count * 100
+    
+    try:
+        for i in win_rate.keys():
+            if win_rate.index.isin([i]).any() == False:
+                win_rate = pd.concat([win_rate, pd.Series([0], index=[i], name=win_rate.name)])
+    except:
+        # nothing
+        pass
+        
+    win_rate = win_rate.sort_values()
+    
+    fig = px.bar(win_rate, x=win_rate[0], y=win_rate.index)
     fig.layout.xaxis.fixedrange = True
     fig.layout.yaxis.fixedrange = True
     return html.Div([
@@ -166,7 +194,8 @@ def table_output(df, contents, filename, date):
         })
     ])
 
-@callback(Output('meta_win_rate', 'children'),
+@callback(Output('meta_player_count', 'children'),
+          Output('meta_win_rate', 'children'),
           Output('output-data-upload', 'children'),
               Input('upload-data', 'contents'),
               Input('textarea-example', 'value'),
@@ -181,8 +210,12 @@ def update_output(contents, meta_grouping_string, filename, date):
             
         df = get_data_frame(contents, filename, date, meta_grouping)
         
-        return meta_win_rate_output(df, meta_grouping), table_output(df, contents, filename, date)
-    return None, None
+        return (meta_player_count_output(df, meta_grouping),
+                meta_win_rate_output(df, meta_grouping),
+                table_output(df, contents, filename, date))
+    return (None, 
+            None, 
+            None)
         
 if __name__ == '__main__':
     app.run(debug=True)
