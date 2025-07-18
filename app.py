@@ -61,6 +61,18 @@ app.layout = html.Div([
         "Meta win rate",
         html.Div(id="meta_win_rate")
         ])),
+    html.Div(children=html.Div([
+        "Base count",
+        html.Div(id="base_count")
+        ])),
+    html.Div(children=html.Div([
+        "Leader count",
+        html.Div(id="leader_count")
+        ])),
+    html.Div(children=html.Div([
+        "Meta-Leader breakdown",
+        html.Div(id="meta_leader_breakdown")
+        ])),
     html.Div(id='output-data-upload')
 ])
 
@@ -94,6 +106,8 @@ def get_data_frame(contents, filename, date, meta_grouping = None):
 
         selected_columns['meta_group'] = selected_columns['Leader'].apply(getquotetoday)
     selected_columns['meta_group'].fillna('other', inplace=True)
+    selected_columns['temp'] = None
+    selected_columns['temp'].fillna(1, inplace=True)
     return selected_columns
 
 
@@ -169,6 +183,46 @@ def meta_win_rate_output(df, meta_grouping):
         dcc.Graph(figure=fig, config={'displayModeBar': False})
     ])
 
+def base_count(df):
+    grouped_data = df.groupby('Base')
+    base_count = grouped_data['Base'].count()
+    
+    base_count = base_count.sort_values()
+    
+    fig = px.bar(base_count, x='Base', y=base_count.index)
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+    return html.Div([
+        dcc.Graph(figure=fig, config={'displayModeBar': False})
+    ])
+
+def leader_count(df):
+    grouped_data = df.groupby('Leader')
+    base_count = grouped_data['Leader'].count()
+    
+    base_count = base_count.sort_values()
+    
+    fig = px.bar(base_count, x='Leader', y=base_count.index)
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+    return html.Div([
+        dcc.Graph(figure=fig, config={'displayModeBar': False})
+    ])
+
+def meta_leader_breakdown(df, meta_grouping):
+    grouped_data = df.groupby('Leader')
+    base_count = grouped_data['Leader'].count()
+    
+    # base_count = base_count.sort_values()
+    
+    # fig = px.bar(base_count, x='Leader', y=base_count.index)
+    fig = px.treemap(df, path=[px.Constant("all"), 'meta_group', 'Leader'], values='temp')
+    fig.layout.xaxis.fixedrange = True
+    fig.layout.yaxis.fixedrange = True
+    return html.Div([
+        dcc.Graph(figure=fig, config={'displayModeBar': False})
+    ])
+
 def table_output(df, contents, filename, date):
     if df is None:
         return html.Div([
@@ -196,6 +250,9 @@ def table_output(df, contents, filename, date):
 
 @callback(Output('meta_player_count', 'children'),
           Output('meta_win_rate', 'children'),
+          Output('base_count', 'children'),
+          Output('leader_count', 'children'),
+          Output('meta_leader_breakdown', 'children'),
           Output('output-data-upload', 'children'),
               Input('upload-data', 'contents'),
               Input('textarea-example', 'value'),
@@ -212,9 +269,15 @@ def update_output(contents, meta_grouping_string, filename, date):
         
         return (meta_player_count_output(df, meta_grouping),
                 meta_win_rate_output(df, meta_grouping),
+                base_count(df),
+                leader_count(df),
+                meta_leader_breakdown(df, meta_grouping),
                 table_output(df, contents, filename, date))
     return (None, 
             None, 
+            None,
+            None,
+            None,
             None)
         
 if __name__ == '__main__':
