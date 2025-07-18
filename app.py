@@ -28,7 +28,6 @@ app.layout = html.Div([
             'textAlign': 'center',
             'margin': '10px'
         },
-        # Allow multiple files to be uploaded
         multiple=False
     ),
     dcc.Textarea(
@@ -53,26 +52,11 @@ app.layout = html.Div([
         """,
         style={'width': '100%', 'height': 300},
     ),
-    html.Div(children=html.Div([
-        "Meta player count",
-        html.Div(id="meta_player_count")
-        ])),
-    html.Div(children=html.Div([
-        "Meta win rate",
-        html.Div(id="meta_win_rate")
-        ])),
-    html.Div(children=html.Div([
-        "Base count",
-        html.Div(id="base_count")
-        ])),
-    html.Div(children=html.Div([
-        "Leader count",
-        html.Div(id="leader_count")
-        ])),
-    html.Div(children=html.Div([
-        "Meta-Leader breakdown",
-        html.Div(id="meta_leader_breakdown")
-        ])),
+    html.Div(id="meta_player_count"),
+    html.Div(id="meta_win_rate"),
+    html.Div(id="base_count"),
+    html.Div(id="leader_count"),
+    html.Div(id="meta_leader_breakdown"),
     html.Div(id='output-data-upload')
 ])
 
@@ -94,7 +78,7 @@ def get_data_frame(contents, filename, date, meta_grouping = None):
         return None
     
     selected_columns = df[['TeamPlayers1DisplayName', 'Points', 'GameCount', 'GameDraws', 'GameLosses', 'GameWins', 'MatchCount', 'MatchDraws', 'MatchLosses', 'MatchWins', 'Decklists1DecklistName']]
-    selected_columns['Decklists1DecklistName'].fillna('Empty - Empty', inplace=True)
+    selected_columns['Decklists1DecklistName'].fillna('No Leader - No Base', inplace=True)
     selected_columns[['Leader', 'Base']] = selected_columns['Decklists1DecklistName'].str.split(' - ', n=1, expand=True)
     selected_columns['meta_group'] = None
     if meta_grouping is not None:
@@ -102,42 +86,14 @@ def get_data_frame(contents, filename, date, meta_grouping = None):
             for idx, key in enumerate(meta_grouping):
                 if val in meta_grouping[key]:
                     return key
-            return 'other'
+            return None
 
         selected_columns['meta_group'] = selected_columns['Leader'].apply(getquotetoday)
-    selected_columns['meta_group'].fillna('other', inplace=True)
-    selected_columns['temp'] = None
-    selected_columns['temp'].fillna(1, inplace=True)
+    selected_columns['meta_group'].fillna('Other', inplace=True)
+    selected_columns['Value'] = None
+    selected_columns['Value'].fillna(1, inplace=True)
     return selected_columns
 
-
-def parse_contents(contents, filename, date):
-    
-    df = get_data_frame(contents, filename, date)
-    
-    if df is None:
-        return html.Div([
-            'There was an error processing this file.'
-        ])
-        
-    return html.Div([
-        html.H5(filename),
-        html.H6(datetime.datetime.fromtimestamp(date)),
-
-        dash_table.DataTable(
-            df.to_dict('records'),
-            [{'name': i, 'id': i} for i in df.columns]
-        ),
-
-        html.Hr(),  # horizontal line
-
-        # For debugging, display the raw contents provided by the web browser
-        html.Div('Raw Content'),
-        html.Pre(contents[0:200] + '...', style={
-            'whiteSpace': 'pre-wrap',
-            'wordBreak': 'break-all'
-        })
-    ])
 
 def meta_player_count_output(df, meta_grouping):
     grouped_data = df.groupby('meta_group')
@@ -153,12 +109,11 @@ def meta_player_count_output(df, meta_grouping):
         
     category_count = category_count.sort_values()
     
-    fig = px.bar(category_count, x='meta_group', y=category_count.index)
-    fig.layout.xaxis.fixedrange = True
-    fig.layout.yaxis.fixedrange = True
-    return html.Div([
-        dcc.Graph(figure=fig, config={'displayModeBar': False})
-    ])
+    fig = px.bar(category_count, 
+                 x='meta_group', 
+                 y=category_count.index,
+                 labels=dict(meta_group="Player Count", index="Archetype"))
+    return create_widget("Archtype count", fig)
 
 def meta_win_rate_output(df, meta_grouping):
     grouped_data = df.groupby('meta_group')
@@ -175,51 +130,44 @@ def meta_win_rate_output(df, meta_grouping):
         pass
         
     win_rate = win_rate.sort_values()
-    
-    fig = px.bar(win_rate, x=win_rate[0], y=win_rate.index)
-    fig.layout.xaxis.fixedrange = True
-    fig.layout.yaxis.fixedrange = True
-    return html.Div([
-        dcc.Graph(figure=fig, config={'displayModeBar': False})
-    ])
+    win_rate.name = "Win rate"
+    fig = px.bar(win_rate, 
+                 x="Win rate", 
+                 y=win_rate.index, 
+                 labels=dict(meta_group="Archtype"))
+    return create_widget("Archtype win rate", fig)
 
 def base_count(df):
     grouped_data = df.groupby('Base')
     base_count = grouped_data['Base'].count()
-    
     base_count = base_count.sort_values()
     
-    fig = px.bar(base_count, x='Base', y=base_count.index)
-    fig.layout.xaxis.fixedrange = True
-    fig.layout.yaxis.fixedrange = True
-    return html.Div([
-        dcc.Graph(figure=fig, config={'displayModeBar': False})
-    ])
+    fig = px.bar(base_count, 
+                 x='Base', 
+                 y=base_count.index,
+                 labels=dict(index="Base", Base="Player Count"))
+    return create_widget("Base count", fig)
 
 def leader_count(df):
     grouped_data = df.groupby('Leader')
     base_count = grouped_data['Leader'].count()
-    
     base_count = base_count.sort_values()
     
-    fig = px.bar(base_count, x='Leader', y=base_count.index)
-    fig.layout.xaxis.fixedrange = True
-    fig.layout.yaxis.fixedrange = True
-    return html.Div([
-        dcc.Graph(figure=fig, config={'displayModeBar': False})
-    ])
+    fig = px.bar(base_count, 
+                 x='Leader', 
+                 y=base_count.index,
+                 labels=dict(index="Leader", Leader="Player count"))
+    return create_widget("Leader count", fig)
 
 def meta_leader_breakdown(df, meta_grouping):
-    grouped_data = df.groupby('Leader')
-    base_count = grouped_data['Leader'].count()
-    
-    # base_count = base_count.sort_values()
-    
-    # fig = px.bar(base_count, x='Leader', y=base_count.index)
-    fig = px.treemap(df, path=[px.Constant("all"), 'meta_group', 'Leader'], values='temp')
+    fig = px.treemap(df, path=[px.Constant("all"), 'meta_group', 'Leader'], values='Value')
+    return create_widget("Meta-Leader breakdown", fig)
+
+def create_widget(title, fig):
     fig.layout.xaxis.fixedrange = True
     fig.layout.yaxis.fixedrange = True
     return html.Div([
+        html.H2(title),
         dcc.Graph(figure=fig, config={'displayModeBar': False})
     ])
 
@@ -267,12 +215,16 @@ def update_output(contents, meta_grouping_string, filename, date):
             
         df = get_data_frame(contents, filename, date, meta_grouping)
         
+        table = None
+        if app.server.debug:
+            table = table_output(df, contents, filename, date)
+        
         return (meta_player_count_output(df, meta_grouping),
                 meta_win_rate_output(df, meta_grouping),
                 base_count(df),
                 leader_count(df),
                 meta_leader_breakdown(df, meta_grouping),
-                table_output(df, contents, filename, date))
+                table)
     return (None, 
             None, 
             None,
