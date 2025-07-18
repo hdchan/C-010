@@ -112,14 +112,16 @@ def meta_player_count_output(df, meta_grouping):
     fig = px.bar(category_count, 
                  x='meta_group', 
                  y=category_count.index,
-                 labels=dict(meta_group="Player Count", index="Archetype"))
+                 labels=dict(meta_group="Player Count", index="Archetype"), 
+                 text='meta_group')
     return create_widget("Archtype count", fig)
 
 def meta_win_rate_output(df, meta_grouping):
     grouped_data = df.groupby('meta_group')
     match_wins = grouped_data['MatchWins'].sum()
     match_count = grouped_data['MatchCount'].sum()
-    win_rate = match_wins / match_count * 100
+    win_rate = (match_wins / match_count * 100).round(decimals=2)
+    # win_rate = win_rate.to_frame()
     
     try:
         for i in win_rate.keys():
@@ -128,13 +130,15 @@ def meta_win_rate_output(df, meta_grouping):
     except:
         # nothing
         pass
-        
+    
     win_rate = win_rate.sort_values()
     win_rate.name = "Win rate"
+    
     fig = px.bar(win_rate, 
                  x="Win rate", 
                  y=win_rate.index, 
-                 labels=dict(meta_group="Archtype"))
+                 labels=dict(meta_group="Archtype"),
+                 text='Win rate')
     return create_widget("Archtype win rate", fig)
 
 def base_count(df):
@@ -145,7 +149,8 @@ def base_count(df):
     fig = px.bar(base_count, 
                  x='Base', 
                  y=base_count.index,
-                 labels=dict(index="Base", Base="Player Count"))
+                 labels=dict(index="Base", Base="Player Count"),
+                 text='Base')
     return create_widget("Base count", fig)
 
 def leader_count(df):
@@ -156,7 +161,8 @@ def leader_count(df):
     fig = px.bar(base_count, 
                  x='Leader', 
                  y=base_count.index,
-                 labels=dict(index="Leader", Leader="Player count"))
+                 labels=dict(index="Leader", Leader="Player count"),
+                 text='Leader')
     return create_widget("Leader count", fig)
 
 def meta_leader_breakdown(df, meta_grouping):
