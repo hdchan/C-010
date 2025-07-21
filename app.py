@@ -1,12 +1,16 @@
-from dash import Dash, dcc, html, dash_table, Input, Output, State, callback
-
 import base64
 import datetime
 import io
 import json
+import random
 
+import dash_ag_grid as dag
 import pandas as pd
 import plotly.express as px
+from dash import (ClientsideFunction, Dash, Input, Output, State, callback,
+                  clientside_callback, dash_table, dcc, html)
+from dash_iconify import DashIconify
+
 external_stylesheets = ['./bWLwgP.css']
 
 app = Dash(__name__, external_stylesheets=external_stylesheets)
@@ -36,18 +40,19 @@ app.layout = html.Div([
         {
         "Aggro": [
             "Sabine Wren, Galvanized Revolutionary",
-            "Leia Organa, Alliance General"
-        ],
-        "Soft Control": [
-            "Darth Vader, Dark Lord of the Sith",
+            "Leia Organa, Alliance General",
             "Kylo Ren, Rash and Deadly"
         ],
-        "Midrange": [
-            "Iden Versio, Inferno Squad Commander",
-            "Rey, More Than A Scavenger",
-            "Hera Syndulla, Spectre Two"
+        "Soft Control": [
+            "Darth Vader, Dark Lord of the Sith"
         ],
-        "Tempos": []
+        "Hard Control": [
+            "Iden Versio, Inferno Squad Commander"
+        ],
+        "Mid-range": [
+            "Rey, More Than A Scavenger"
+        ],
+        "Tempo": []
         }
         """,
         style={'width': '100%', 'height': 300},
@@ -167,7 +172,7 @@ def leader_count(df):
 
 def meta_leader_breakdown(df, meta_grouping):
     fig = px.treemap(df, path=[px.Constant("all"), 'meta_group', 'Leader'], values='Value')
-    return create_widget("Meta-Leader breakdown", fig)
+    return create_widget("Archetype-Leader breakdown", fig)
 
 def create_widget(title, fig):
     fig.layout.xaxis.fixedrange = True
@@ -237,6 +242,6 @@ def update_output(contents, meta_grouping_string, filename, date):
             None,
             None,
             None)
-        
+
 if __name__ == '__main__':
     app.run(debug=True)
